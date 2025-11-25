@@ -4,11 +4,12 @@ library(igraph)
 library(tidyr)
 
 # --- Load your enriched dataset ---
-data <- read.csv("C://Users//jorda//OneDrive//Documents//EPID 526//polRecArrestData_withMasterID.csv", stringsAsFactors = FALSE)
+data <- read.csv("C://Users//jorda//OneDrive//Documents//EPID-526-Final-Project//polRecArrestData_withMasterID.csv", stringsAsFactors = FALSE)
 
 # Keep just the key identifiers
 df <- data %>%
-  select(MasterID, INCI_ID, ArrestID, WEAPON_CATEGORY, CrimeType, CrimeCategory) %>%
+  select(MasterID, INCI_ID, ArrestID, WEAPON_CATEGORY, CrimeType, CrimeCategory,
+         WARD, ArrestDate, ArrestCharge) %>%
   distinct()
 # All pairs of people who appear in the same incident
 edges <- df %>%
@@ -28,7 +29,8 @@ edges <- edges %>%
   filter(from != to) %>%
   distinct() %>% 
   right_join(data %>% select(MasterID), by=join_by(from == MasterID)) %>% 
-  distinct()
+  distinct() %>% 
+  filter(!is.na(to))
 
 g <- graph_from_data_frame(edges, directed = FALSE)
 

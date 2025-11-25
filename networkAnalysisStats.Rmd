@@ -1,0 +1,105 @@
+---
+title: "Social Network Statistics"
+author: "Jordan Robinson"
+date: "2025-11-25"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r cars}
+
+
+# --- Load required libraries ---
+library(igraph)
+library(tidyverse)
+
+# --- Load data ---
+edges <- read_csv("gunViolenceEdges.csv") %>% 
+  filter(!is.na(to))
+
+
+nodeData <- read_csv("gunViolenceCleanData.csv")
+
+nodes <- nodeData %>% 
+  group_by(MasterID) %>% 
+  summarize(
+    numIncidents = length(unique(INCI_ID)),
+    arrested = any(!is.na(ArrestID)),
+    ward = unique(WARD)[1],
+    arrestDate = ifelse(any(!is.na(ArrestID)), ArrestDate[1], NA)
+  )
+
+# --- Build directed graph ---
+g <- graph_from_data_frame(d = edges,
+                           vertices = nodes,
+                           directed = TRUE)
+
+# --- Basic network metrics ---
+num_nodes <- vcount(g)
+num_edges <- ecount(g)
+avg_degree <- mean(degree(g))
+density_val <- edge_density(g)
+
+# --- Convert to undirected for some measures ---
+g_undirected <- as.undirected(g, mode = "collapse")
+
+# --- Triangles and clustering ---
+num_triangles <- sum(count_triangles(g_undirected)) / 3
+avg_clustering <- transitivity(g_undirected, type = "average")
+
+# --- Connected components ---
+components_info <- components(g_undirected)
+num_components <- components_info$no
+
+# --- Diameter of largest component ---
+largest_comp <- induced_subgraph(g_undirected,
+                                 which(components_info$membership == which.max(components_info$csize)))
+diameter_val <- diameter(largest_comp)
+avg_path_length <- mean_distance(largest_comp, directed = FALSE)
+
+# --- Combine global metrics ---
+network_metrics <- tibble(
+  Metric = c("Number of Nodes",
+             "Number of Edges",
+             "Average Degree",
+             "Density",
+             "Number of Triangles",
+             "Average Clustering Coefficient",
+             "Number of Connected Components",
+             "Diameter (Largest Component)"),
+  Value = c(num_nodes,
+            num_edges,
+            avg_degree,
+            density_val,
+            num_triangles,
+            avg_clustering,
+            num_components,
+            diameter_val)
+)
+
+# --- Centrality measures for each node ---
+node_centrality <- tibble(
+  accountID = V(g)$accountID,
+  username = V(g)$username,
+  degree_centrality = degree(g, mode = "all", normalized = TRUE),
+  betweenness_centrality = betweenness(g, normalized = TRUE),
+  closeness_centrality = closeness(g, normalized = TRUE),
+  eigenvector_centrality = eigen_centrality(g, directed = TRUE, scale = TRUE)$vector
+)
+
+plot(
+  g,
+  vertex.size = log(degree(g) + 1) * 5,
+  vertex.color = ifelse(V(g)$arrested, "red", "skyblue"),
+  vertex.label = NA,
+  main = "Gun Violence Involvement Network"
+)
+
+```
+
+
