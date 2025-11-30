@@ -1,65 +1,102 @@
-# --- Load libraries ---
 library(dplyr)
 
-# --- Load the firearm-related dataset ---
-data <- read.csv("C://Users//jorda//OneDrive//Documents//EPID 526//polRecArrestData.csv",
-                 stringsAsFactors = FALSE)
-
-set.seed(2025)
-rows <- list()
-master_counter <- 1
-master_pool <- character()  # store previously created MasterIDs
+data <- read.csv("polRecArrestData.csv", stringsAsFactors = FALSE)
+data$INCI_ID <- as.character(data$INCI_ID)
 
 incs <- unique(data$INCI_ID)
 
+set.seed(2026)
+
+rows <- list()
+master_counter <- 1
+
+# Track per-person attributes
+shot_status <- logical()         # named logical vector
+incident_count <- integer()      # number of incidents per person
+names(shot_status) <- character(0)
+names(incident_count) <- character(0)
+
+# Probability functions
+shot_prob <- function(n_incidents) {
+  # increases as person participates more
+  min(0.10 + (n_incidents - 1) * 0.15, 0.95)
+}
+
+arrest_prob <- 0.85  # constant high probability
+
 for (inc in incs) {
-  # Random number of people per incident
+  
+  # ---- Determine who is available (not shot yet) ----
+  available_people <- names(shot_status)[shot_status == FALSE]
+  
+  # Number of participants this incident
   n_people <- sample(1:3, 1)
   
-  # Some people are new, some are returning (10–20%)
-  n_returning <- rbinom(1, n_people, prob = 0.4)
+  # Returning participants
+  n_returning <- rbinom(1, n_people, prob = 0.2)
   
-  # Choose returning MasterIDs from pool if available
-  returning <- if (length(master_pool) > 0 && n_returning > 0) {
-    sample(master_pool, min(n_returning, length(master_pool)))
-  } else character(0)
+  returning <- character(0)
+  if (length(available_people) > 0 && n_returning > 0) {
+    returning <- sample(available_people, min(n_returning, length(available_people)))
+  }
   
-  # Create new MasterIDs for new people
+  # New participants
   n_new <- n_people - length(returning)
-  new_people <- paste0("M", sprintf("%06d", master_counter:(master_counter + n_new - 1)))
-  master_counter <- master_counter + n_new
+  new_people <- character(0)
+  if (n_new > 0) {
+    new_people <- paste0("M", sprintf("%06d", master_counter:(master_counter + n_new - 1)))
+    master_counter <- master_counter + n_new
+    
+    # initialize attributes
+    shot_status[new_people] <- FALSE
+    incident_count[new_people] <- 0L
+  }
   
-  # Combine returning + new
+  # Combine
   people <- c(returning, new_people)
-  master_pool <- unique(c(master_pool, people))
   
-  # Base rows for participants
+  # Update incident counts
+  incident_count[people] <- incident_count[people] + 1L
+  
+  # Add the basic participant rows
   incident_rows <- data.frame(
     MasterID = people,
     INCI_ID = inc,
-    ArrestID = NA_character_,
+    shot = FALSE,
+    arrested = FALSE,
     stringsAsFactors = FALSE
   )
   
-  # Add arrests for this incident
-  sub <- data %>% filter(INCI_ID == inc)
-  arrest_ids <- unique(na.omit(sub$ArrestID))
-  if (length(arrest_ids) > 0) {
-    for (aid in arrest_ids) {
-      mid <- sample(people, 1)
-      incident_rows <- rbind(
-        incident_rows,
-        data.frame(MasterID = mid, INCI_ID = inc, ArrestID = aid, stringsAsFactors = FALSE)
-      )
+  # ---- Determine shooting ----
+  for (p in people) {
+    if (!shot_status[p]) {
+      p_shot <- rbinom(1, 1, shot_prob(incident_count[p])) == 1
+      if (p_shot) {
+        shot_status[p] <- TRUE
+        incident_rows$shot[incident_rows$MasterID == p] <- TRUE
+      }
+    }
+  }
+  
+  # ---- Determine arrests ----
+  for (p in people) {
+    p_arrest <- rbinom(1, 1, arrest_prob) == 1
+    if (p_arrest) {
+      incident_rows$arrested[incident_rows$MasterID == p] <- TRUE
     }
   }
   
   rows[[length(rows) + 1]] <- incident_rows
+  
+  # ---- Remove shot people from availability ----
+  # (ensures they do not appear in future incidents)
+  # shot_status always contains the correct boolean values now
 }
 
-mock_links <- bind_rows(rows) %>% 
-  mutate(INCI_ID = as.numeric(INCI_ID))
-mock_data <- data %>% left_join(mock_links, by = c("INCI_ID", "ArrestID"))
+mock_links <- bind_rows(rows)
+
+# Merge with original data (optional)
+mock_data <- data %>%
+  left_join(mock_links, by = "INCI_ID")
+
 write.csv(mock_data, "polRecArrestData_withMasterID.csv", row.names = FALSE)
-
-

@@ -9,7 +9,7 @@ data <- read.csv("C://Users//jorda//OneDrive//Documents//EPID-526-Final-Project/
 # Keep just the key identifiers
 df <- data %>%
   select(MasterID, INCI_ID, ArrestID, WEAPON_CATEGORY, CrimeType, CrimeCategory,
-         WARD, ArrestDate, ArrestCharge) %>%
+         WARD, ArrestDate, ArrestCharge, shot) %>%
   distinct()
 # All pairs of people who appear in the same incident
 edges <- df %>%

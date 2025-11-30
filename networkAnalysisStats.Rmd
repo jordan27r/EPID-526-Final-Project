@@ -19,8 +19,7 @@ library(igraph)
 library(tidyverse)
 
 # --- Load data ---
-edges <- read_csv("gunViolenceEdges.csv") %>% 
-  filter(!is.na(to))
+edges <- read_csv("gunViolenceEdges.csv") 
 
 
 nodeData <- read_csv("gunViolenceCleanData.csv")
@@ -33,6 +32,11 @@ nodes <- nodeData %>%
     ward = unique(WARD)[1],
     arrestDate = ifelse(any(!is.na(ArrestID)), ArrestDate[1], NA)
   )
+
+nodesWData <- edges %>% 
+  left_join(nodes, by = join_by(from==MasterID))
+
+ # write.csv(nodesWData, "gunViolenceEdgesUpdated.csv")
 
 # --- Build directed graph ---
 g <- graph_from_data_frame(d = edges,
