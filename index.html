@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Data Display</title>
+</head>
+<body>
+    <h1>Data from JSON</h1>
+    <div id="json-container"></div>
+
+    <script>
+        // Adjust the path to your JSON file as needed
+        const jsonFilePath = 'dashboard.json'; 
+
+        fetch(jsonFilePath)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                const container = document.getElementById('json-container');
+                // Example: Displaying data in a simple way
+                container.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`; 
+                // You can parse and manipulate 'data' here to display it as desired
+            })
+            .catch(error => {
+                console.error('Error fetching JSON:', error);
+                document.getElementById('json-container').innerHTML = `<p>Error loading data: ${error.message}</p>`;
+            });
+    </script>
+</body>
+</html>
