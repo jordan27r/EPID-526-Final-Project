@@ -1,0 +1,219 @@
+{
+  "title": "Gun Violence Analysis",
+  "version": "2.4",
+  "settings": {
+    "pagenumber": 0,
+    "editable": true,
+    "fullscreenEnabled": false,
+    "parameters": {
+      "neodash_gunviolencedata_shot_true": "true",
+      "neodash_gunviolencedata_shot_true_display": "true"
+    },
+    "theme": "light"
+  },
+  "pages": [
+    {
+      "title": "Main Page",
+      "reports": [
+        {
+          "id": "401e4720-fb65-4e45-b8ce-b54e0cef467e",
+          "title": "Gun Violence Social Network",
+          "query": "OPTIONAL MATCH (n1:gunViolenceData), (n2:gunViolenceData) \nWHERE n1.to = n2.from AND n1.from <> n2.from\nMERGE (n1)-[r:edges]-(n2)\nRETURN n1, n2,r",
+          "width": 14,
+          "height": 4,
+          "x": 0,
+          "y": 2,
+          "type": "graph",
+          "selection": {
+            "gunViolenceData": "(no label)",
+            "edges": "(label)"
+          },
+          "settings": {
+            "type": "Node Property",
+            "entityType": "gunViolenceData",
+            "propertyType": "shot",
+            "propertyTypeDisplay": "shot",
+            "parameterName": "neodash_gunviolencedata_shot_true",
+            "id": "true",
+            "fullscreenEnabled": true,
+            "layout": "force-directed",
+            "showPropertiesOnHover": true,
+            "lockable": false,
+            "rightClickToExpandNodes": true,
+            "defaultNodeSize": 30,
+            "nodeLabelFontSize": 12,
+            "nodeColorProp": "shot",
+            "nodeSizeProp": "numIncidents",
+            "nodeColorScheme": "set1"
+          },
+          "schema": [
+            [
+              "gunViolenceData",
+              "numIncidents",
+              "arrested",
+              "from",
+              "to",
+              "ward",
+              "shot",
+              "arrestDate"
+            ],
+            [
+              "edges"
+            ]
+          ]
+        },
+        {
+          "id": "fc05489f-c7d6-46c0-8529-0457d6e081e1",
+          "title": "Total Arrests by Ward",
+          "query": "MATCH (n:gunViolenceData)\nRETURN n.ward AS Ward, count(n) AS `Number People`\nORDER BY Ward ASC\n\n\n",
+          "width": 10,
+          "height": 4,
+          "x": 0,
+          "y": 6,
+          "type": "bar",
+          "selection": {
+            "index": "Ward",
+            "value": "Number People",
+            "key": "(none)"
+          },
+          "settings": {},
+          "schema": []
+        },
+        {
+          "id": "86dad6c6-5fd0-4fc5-aec3-55a96f12978a",
+          "title": "Numbers by Month",
+          "query": "/* Plot Number arrests by month */\n\nMATCH (g:gunIncidentData)\nWHERE g.DATE_REPT.month IS NOT NULL\nWITH g.DATE_REPT.month AS month, count(g) AS totalArrests, count(CASE WHEN g.shot = true THEN 1 END) AS totalShot\nRETURN month, totalShot, totalArrests\nORDER BY month\n\n\n\n",
+          "width": 10,
+          "height": 4,
+          "x": 11,
+          "y": 6,
+          "type": "line",
+          "selection": {
+            "x": "month",
+            "value": [
+              "totalShot",
+              "totalArrests"
+            ]
+          },
+          "settings": {},
+          "schema": []
+        },
+        {
+          "id": "8906eaab-e6ae-4ead-8ea0-0b59e3bbb372",
+          "title": "Avg. Number Incidents Before Arrest",
+          "query": "MATCH (g:gunViolenceData)\nWHERE g.arrestDate IS NOT NULL\nRETURN avg(g.numIncidents) AS avgIncidentsBeforeArrest\n\n\n",
+          "width": 9,
+          "height": 2,
+          "x": 0,
+          "y": 10,
+          "type": "value",
+          "selection": {},
+          "settings": {},
+          "schema": []
+        },
+        {
+          "id": "2cf6030a-7808-4a93-9021-0bc0281a53a3",
+          "title": "Most Common Charge",
+          "query": "MATCH (g:gunIncidentData)\nWHERE g.ArrestChargeDescription <> 'NA'\nRETURN g.ArrestChargeDescription, count(*) AS count\nORDER BY count DESC\nLIMIT 1\n\n\n\n",
+          "width": 9,
+          "height": 2,
+          "x": 0,
+          "y": 12,
+          "type": "value",
+          "selection": {},
+          "settings": {
+            "fontSize": 30,
+            "format": "yml"
+          },
+          "schema": []
+        },
+        {
+          "id": "4fed48ff-2cb8-4413-8eb5-8180061871d1",
+          "title": "% Reoffense Rate",
+          "query": "MATCH (g:gunViolenceData)\nWITH count(CASE WHEN g.numIncidents >1 THEN 1 END) as reoffend, count(*) as total\nRETURN  100.0 * reoffend / total AS proportion\n\n\n\n",
+          "width": 6,
+          "height": 2,
+          "x": 9,
+          "y": 10,
+          "type": "value",
+          "selection": {},
+          "settings": {},
+          "schema": []
+        },
+        {
+          "id": "44f86b04-46db-4f6c-90e1-513f585a4347",
+          "title": "Avg. Time B/W Incidents",
+          "query": "MATCH (inc:gunIncidentData)\nWITH inc.MasterID AS MasterID,\n     date(inc.DATE_REPT) AS d\nWHERE d IS NOT NULL\nWITH MasterID, collect(d) AS dates\nWITH MasterID, apoc.coll.sort(dates) AS dates\nUNWIND range(0, size(dates) - 2) AS idx\nWITH MasterID,\n     duration.between(dates[idx], dates[idx + 1]).days AS timeDiff\nRETURN avg(timeDiff) AS averageTimeDifference\nORDER BY averageTimeDifference DESC;\n",
+          "width": 8,
+          "height": 2,
+          "x": 15,
+          "y": 10,
+          "type": "value",
+          "selection": {},
+          "settings": {},
+          "schema": []
+        },
+        {
+          "id": "b08ea41c-9838-4df6-9d98-fad654afc5ef",
+          "title": "Avg. Number Connections",
+          "query": "MATCH (n:gunViolenceData)\nCALL {\n    WITH n\n    MATCH (n)--()\n    RETURN count(*) AS degree\n}\nRETURN avg(degree) AS averageNetworkSize;\n\n\n",
+          "width": 7,
+          "height": 2,
+          "x": 9,
+          "y": 12,
+          "type": "value",
+          "selection": {},
+          "settings": {},
+          "schema": []
+        },
+        {
+          "id": "4b5c4f9c-7dae-4da9-946c-35b6a95c0bc4",
+          "title": "Network Statistics",
+          "query": "MATCH (g:gunViolenceData)\nRETURN g.arrested, g.from, g.numIncidents, g.shot, g.to, g.ward, g.arrestDate",
+          "width": 10,
+          "height": 4,
+          "x": 14,
+          "y": 2,
+          "type": "table",
+          "selection": {},
+          "settings": {}
+        },
+        {
+          "id": "1bc15fd3-9b72-4696-afa2-cb23b4a11322",
+          "title": "Interventions Recommended",
+          "query": "\nhttps://jordan27r.github.io/EPID-526-HW-3/\n\n",
+          "width": 23,
+          "height": 2,
+          "x": 0,
+          "y": 0,
+          "type": "iframe",
+          "selection": {},
+          "settings": {},
+          "schema": []
+        },
+        {
+          "id": "6f3df489-ff60-4bbb-b706-c12bd642dff9",
+          "title": "Number Multi-Person Offenses",
+          "query": "\n      \n\n\n",
+          "width": 6,
+          "height": 2,
+          "x": 16,
+          "y": 12,
+          "type": "table",
+          "selection": {},
+          "settings": {}
+        }
+      ]
+    },
+    {
+      "title": "New page",
+      "reports": []
+    }
+  ],
+  "parameters": {},
+  "extensions": {
+    "active": true,
+    "activeReducers": []
+  },
+  "uuid": "a296679f-72a2-44ae-8528-12ed4123c032"
+}
