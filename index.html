@@ -1,28 +1,228 @@
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>JSON Data Display</title>
-    </head>
-    <body>
-        <h1></h1>
-        <ul id="data-list"></ul>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>NeoDash JSON Renderer</title>
+  <style>
+    :root{--bg:#f7f8fb;--card:#fff;--muted:#6b7280;--accent:#0f172a}
+    html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,'Helvetica Neue',Arial}
+    body{background:var(--bg);color:var(--accent);display:flex}
+    /* Sidebar */
+    .sidebar{width:260px;background:#ffffff;border-right:1px solid #e6e9ef;padding:18px;box-sizing:border-box}
+    .brand{font-weight:700;margin-bottom:12px}
+    .pages{list-style:none;padding:0;margin:8px 0}
+    .pages li{padding:8px 10px;border-radius:6px;cursor:pointer;color:var(--accent)}
+    .pages li.active{background:#eef2ff;font-weight:600}
+    .search{margin:8px 0}
+    .search input{width:100%;padding:8px;border-radius:6px;border:1px solid #dbe3f0}
 
-        <script>
-            fetch('dashboard.json') // Path to your JSON file
-                .then(response => response.json())
-                .then(data => {
-                    console.log(data.pages[0])
-                    document.querySelector('h1').textContent = data.title;
-                    const dataList = document.getElementById('data-list');
-                    data.pages[0].reports.forEach(item => {
-                        const listItem = document.createElement('li');
-                        listItem.textContent = item;
-                        dataList.appendChild(listItem);
-                    });
-                })
-                .catch(error => console.error('Error fetching JSON:', error));
-        </script>
-    </body>
-    </html>
+    /* Main area */
+    .main{flex:1;padding:18px;overflow:auto}
+    .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    .title{font-size:20px;font-weight:700}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+
+    /* Card */
+    .card{background:var(--card);padding:12px;border-radius:10px;box-shadow:0 1px 2px rgba(20,20,50,0.04);border:1px solid rgba(15,23,42,0.04)}
+    .card .meta{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+    .badge{font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid #e6e9ef}
+    .card h3{margin:0;font-size:15px}
+    .card p{margin:8px 0;color:var(--muted);font-size:13px}
+    .toggle{background:#f1f5f9;border-radius:6px;padding:6px 8px;border:1px solid #e6e9ef;cursor:pointer}
+    .small{font-size:12px;color:var(--muted)}
+
+    /* report details */
+    .details{margin-top:10px;border-top:1px dashed #eef2f6;padding-top:10px;display:none}
+    .details pre{white-space:pre-wrap;font-size:12px;background:#fbfcff;padding:10px;border-radius:6px;border:1px solid #eef2f8}
+
+    /* responsive */
+    @media (max-width:800px){.sidebar{display:none}.main{padding:12px}}
+    .footer{margin-top:18px;color:var(--muted);font-size:13px}
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">NeoDash JSON Renderer</div>
+    <div class="small">Put <code>dashboard.json</code> in the same folder as this file.</div>
+    <div class="search"><input id="page-search" placeholder="Filter pages..." /></div>
+    <ul id="pages-list" class="pages"></ul>
+    <div class="footer">Rendered from NeoDash export</div>
+  </aside>
+
+  <main class="main">
+    <div class="header">
+      <div>
+        <div class="title" id="dashboard-title">Loading...</div>
+        <div class="small" id="dashboard-sub"> </div>
+      </div>
+      <div>
+        <button id="collapse-all" class="toggle">Collapse all</button>
+      </div>
+    </div>
+
+    <div id="page-meta" class="small" style="margin-bottom:12px"></div>
+    <div id="reports-grid" class="grid"></div>
+  </main>
+
+  <script>
+    // Main renderer
+    const DASH_PATH = './dashboard.json'; // safe for GitHub Pages when file is next to this HTML
+
+    async function loadDashboard() {
+      try {
+        const res = await fetch(DASH_PATH);
+        if (!res.ok) throw new Error('HTTP ' + res.status + ' loading ' + DASH_PATH);
+        const data = await res.json();
+        renderDashboard(data);
+      } catch (err) {
+        document.getElementById('dashboard-title').textContent = 'Error loading dashboard.json';
+        document.getElementById('dashboard-sub').textContent = err.message;
+        console.error(err);
+      }
+    }
+
+    function renderDashboard(data) {
+      document.getElementById('dashboard-title').textContent = data.title || 'Untitled Dashboard';
+      document.getElementById('dashboard-sub').textContent = 'Version: ' + (data.version || 'n/a');
+
+      // Sidebar pages
+      const pagesList = document.getElementById('pages-list');
+      pagesList.innerHTML = '';
+
+      const pages = Array.isArray(data.pages) ? data.pages : [];
+      pages.forEach((page, idx) => {
+        const li = document.createElement('li');
+        li.textContent = page.title || ('Page ' + (idx+1));
+        li.addEventListener('click', () => selectPage(idx));
+        if (idx === 0) li.classList.add('active');
+        pagesList.appendChild(li);
+      });
+
+      // Search filter
+      document.getElementById('page-search').addEventListener('input', (e) => {
+        const q = e.target.value.toLowerCase();
+        Array.from(pagesList.children).forEach((li, i) => {
+          const page = pages[i];
+          const match = (page.title || '').toLowerCase().includes(q) || (page.reports || []).some(r => (r.title||'').toLowerCase().includes(q));
+          li.style.display = match ? '' : 'none';
+        });
+      });
+
+      // initial render of first page
+      selectPage(0);
+
+      function selectPage(pageIndex) {
+        // mark active
+        Array.from(pagesList.children).forEach((li, i) => li.classList.toggle('active', i === pageIndex));
+
+        const page = pages[pageIndex] || { title: 'Empty', reports: [] };
+        document.getElementById('page-meta').textContent = `Page: ${page.title} — ${page.reports ? page.reports.length : 0} reports`;
+
+        const grid = document.getElementById('reports-grid');
+        grid.innerHTML = '';
+
+        const reports = Array.isArray(page.reports) ? page.reports : [];
+        reports.forEach(report => grid.appendChild(createReportCard(report)));
+      }
+
+      // collapse all button
+      document.getElementById('collapse-all').addEventListener('click', () => {
+        document.querySelectorAll('.details').forEach(d => d.style.display = 'none');
+      });
+    }
+
+    function createReportCard(report) {
+      const card = document.createElement('div');
+      card.className = 'card';
+
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+
+      const badge = document.createElement('div');
+      badge.className = 'badge';
+      badge.textContent = report.type ? report.type.toUpperCase() : 'REPORT';
+      meta.appendChild(badge);
+
+      const h = document.createElement('h3');
+      h.textContent = report.title || 'Untitled Report';
+
+      const controls = document.createElement('div');
+      controls.style.marginLeft = 'auto';
+
+      const toggle = document.createElement('button');
+      toggle.className = 'toggle';
+      toggle.textContent = 'Details';
+      toggle.addEventListener('click', () => {
+        details.style.display = details.style.display === 'none' ? 'block' : 'none';
+      });
+
+      controls.appendChild(toggle);
+      meta.appendChild(controls);
+
+      card.appendChild(meta);
+      card.appendChild(h);
+
+      // short description area
+      const p = document.createElement('p');
+      p.innerHTML = `<strong>Query:</strong> ${shorten(report.query || report.title || '')}`;
+      card.appendChild(p);
+
+      // small metadata row
+      const info = document.createElement('div');
+      info.className = 'small';
+      info.innerHTML = `Size: ${report.width || '-'} x ${report.height || '-'} &nbsp; • &nbsp; Type: ${report.type || '-'} `;
+      card.appendChild(info);
+
+      // details (hidden)
+      const details = document.createElement('div');
+      details.className = 'details';
+
+      // full query
+      const qBlock = document.createElement('div');
+      const qTitle = document.createElement('div'); qTitle.textContent = 'Full query'; qTitle.style.fontWeight = '600'; qTitle.style.marginBottom = '6px';
+      const qPre = document.createElement('pre'); qPre.textContent = report.query || '(none)';
+      qBlock.appendChild(qTitle); qBlock.appendChild(qPre);
+      details.appendChild(qBlock);
+
+      // selection
+      if (report.selection && Object.keys(report.selection).length) {
+        const selTitle = document.createElement('div'); selTitle.textContent = 'Selection (mapping)'; selTitle.style.fontWeight='600'; selTitle.style.margin='8px 0 6px';
+        const selPre = document.createElement('pre'); selPre.textContent = JSON.stringify(report.selection, null, 2);
+        details.appendChild(selTitle); details.appendChild(selPre);
+      }
+
+      // settings
+      if (report.settings && Object.keys(report.settings).length) {
+        const setTitle = document.createElement('div'); setTitle.textContent = 'Settings'; setTitle.style.fontWeight='600'; setTitle.style.margin='8px 0 6px';
+        const setPre = document.createElement('pre'); setPre.textContent = JSON.stringify(report.settings, null, 2);
+        details.appendChild(setTitle); details.appendChild(setPre);
+      }
+
+      // schema
+      if (report.schema && report.schema.length) {
+        const sTitle = document.createElement('div'); sTitle.textContent = 'Schema'; sTitle.style.fontWeight='600'; sTitle.style.margin='8px 0 6px';
+        const sPre = document.createElement('pre'); sPre.textContent = JSON.stringify(report.schema, null, 2);
+        details.appendChild(sTitle); details.appendChild(sPre);
+      }
+
+      // add quick copy buttons
+      const actions = document.createElement('div'); actions.style.marginTop='10px';
+      const copyBtn = document.createElement('button'); copyBtn.className='toggle'; copyBtn.textContent='Copy Query';
+      copyBtn.addEventListener('click', async () => { await navigator.clipboard.writeText(report.query||''); copyBtn.textContent='Copied!'; setTimeout(()=>copyBtn.textContent='Copy Query',1200); });
+      actions.appendChild(copyBtn);
+
+      details.appendChild(actions);
+
+      card.appendChild(details);
+
+      return card;
+    }
+
+    function shorten(s, n=120){ if(!s) return '(none)'; s = s.trim(); return s.length>n ? s.slice(0,n)+'…' : s; }
+
+    // Start
+    loadDashboard();
+  </script>
+</body>
+</html>
