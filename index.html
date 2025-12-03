@@ -13,10 +13,10 @@
             fetch('dashboard.json') // Path to your JSON file
                 .then(response => response.json())
                 .then(data => {
-                    console.log(data)
+                    console.log(data.pages[0])
                     document.querySelector('h1').textContent = data.title;
                     const dataList = document.getElementById('data-list');
-                    data.pages[0].forEach(item => {
+                    data.pages[0].reports.forEach(item => {
                         const listItem = document.createElement('li');
                         listItem.textContent = item;
                         dataList.appendChild(listItem);
