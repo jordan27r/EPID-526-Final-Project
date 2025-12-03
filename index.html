@@ -16,7 +16,7 @@
                     console.log(data)
                     document.querySelector('h1').textContent = data.title;
                     const dataList = document.getElementById('data-list');
-                    data.items.forEach(item => {
+                    data.pages[0].forEach(item => {
                         const listItem = document.createElement('li');
                         listItem.textContent = item;
                         dataList.appendChild(listItem);
