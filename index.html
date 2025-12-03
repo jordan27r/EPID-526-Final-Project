@@ -4,24 +4,44 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>NeoDash JSON Renderer</title>
+
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sigma"></script>
+
+  <!-- Graphology + Sigma browser builds -->
+  <script src="https://cdn.jsdelivr.net/npm/graphology/dist/graphology.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sigma/build/sigma.min.js"></script>
+
   <style>
-    :root{--bg:#f7f8fb;--card:#fff;--muted:#6b7280;--accent:#0f172a;--dark-bg:#0f172a;--dark-card:#1e293b;--dark-text:#f8fafc}
-    body.dark{background:var(--dark-bg);color:var(--dark-text)}
-    body.dark .card{background:var(--dark-card);color:var(--dark-text);border-color:#334155}
-    body.dark .sidebar{background:#1e293b;color:var(--dark-text)}
-    html,body{height:100%;margin:0;font-family:Inter,system-ui}
-    body{background:var(--bg);display:flex;transition:0.3s}
-    .sidebar{width:260px;border-right:1px solid #e5e7eb;padding:16px}
-    .pages{list-style:none;padding:0}
-    .pages li{padding:8px;cursor:pointer;border-radius:6px}
-    .pages li.active{background:#e0e7ff}
-    .main{flex:1;padding:18px;overflow:auto}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px}
-    .card{background:var(--card);padding:14px;border-radius:10px;border:1px solid #e2e8f0;transition:.3s}
-    .dark-toggle{cursor:pointer;padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px}
-    canvas{width:100%!important;height:250px!important}
+    :root {
+      --bg: #f7f8fb;
+      --card: #fff;
+      --muted: #6b7280;
+      --accent: #0f172a;
+      --dark-bg: #0f172a;
+      --dark-card: #1e293b;
+      --dark-text: #f8fafc;
+    }
+    body.dark { background: var(--dark-bg); color: var(--dark-text); }
+    body.dark .card { background: var(--dark-card); color: var(--dark-text); border-color:#334155; }
+    body.dark .sidebar { background:#1e293b; color:var(--dark-text); }
+
+    html, body { height:100%; margin:0; font-family:Inter, system-ui; }
+    body { display:flex; background:var(--bg); transition:0.3s; }
+
+    .sidebar { width:260px; border-right:1px solid #e5e7eb; padding:16px; }
+
+    .pages { list-style:none; padding:0; }
+    .pages li { padding:8px; cursor:pointer; border-radius:6px; }
+    .pages li.active { background:#e0e7ff; }
+
+    .main { flex:1; padding:18px; overflow:auto; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:16px; }
+
+    .card { background:var(--card); padding:14px; border-radius:10px; border:1px solid #e2e8f0; }
+
+    canvas { width:100%!important; height:250px!important; }
+    .dark-toggle { cursor:pointer; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:10px; }
   </style>
 </head>
 <body>
@@ -37,71 +57,102 @@
   </main>
 
 <script>
-const DASH_PATH = './dashboard.json';
+const DASH_PATH = "./dashboard.json";
+let dashboard = null;
 
 async function loadDashboard(){
   const res = await fetch(DASH_PATH);
-  const data = await res.json();
-  renderDashboard(data);
+  dashboard = await res.json();
+  renderDashboard(dashboard);
 }
 
 function renderDashboard(data){
-      window.dashboard = data;(data){
-  document.getElementById('dashboard-title').textContent = data.title;
-  const pagesList=document.getElementById('pages-list');
-  data.pages.forEach((p,i)=>{
-    const li=document.createElement('li');
-    li.textContent=p.title; if(i===0) li.classList.add('active');
-    li.onclick=()=>selectPage(i);
+  document.getElementById("dashboard-title").textContent = data.title;
+
+  const pagesList = document.getElementById("pages-list");
+  pagesList.innerHTML = "";
+
+  data.pages.forEach((page, index) => {
+    const li = document.createElement("li");
+    li.textContent = page.title;
+    if(index === 0) li.classList.add("active");
+    li.onclick = () => selectPage(index);
     pagesList.appendChild(li);
   });
+
   selectPage(0);
 }
 
 function selectPage(i){
-  const pages=document.querySelectorAll('.pages li');
-  pages.forEach((li,idx)=>li.classList.toggle('active',idx===i));
-  const grid=document.getElementById('reports-grid');
-  grid.innerHTML='';
-  const page=window.dashboard.pages[i];
-  page.reports.forEach(r=>grid.appendChild(createCard(r)));
+  const grid=document.getElementById("reports-grid");
+  grid.innerHTML="";
+
+  const lis=document.querySelectorAll(".pages li");
+  lis.forEach((li,idx)=>li.classList.toggle("active", idx===i));
+
+  const page = dashboard.pages[i];
+  page.reports.forEach(report => grid.appendChild(createCard(report)));
 }
 
 function createCard(r){
-  const card=document.createElement('div'); card.className='card';
-  const title=document.createElement('h3'); title.textContent=r.title; card.appendChild(title);
+  const card = document.createElement("div");
+  card.className = "card";
 
-  // Chart container
-  if(['bar','line','value','table','graph'].includes(r.type)){
-    const container=document.createElement('div'); container.style.marginTop='10px';
+  const title = document.createElement("h3");
+  title.textContent = r.title;
+  card.appendChild(title);
 
-    if(r.type==='value'){
-      const big=document.createElement('div'); big.style.fontSize='32px'; big.textContent='(value placeholder)'; container.appendChild(big);
-    }
+  const container = document.createElement("div");
+  container.style.marginTop="10px";
 
-    if(r.type==='table'){
-      const tbl=document.createElement('div'); tbl.textContent='(table placeholder)'; container.appendChild(tbl);
-    }
-
-    if(['bar','line'].includes(r.type)){
-      const c=document.createElement('canvas'); container.appendChild(c);
-      new Chart(c,{type:r.type,data:{labels:['A','B','C'],datasets:[{data:[3,7,5]}]}});
-    }
-
-    if(r.type==='graph'){
-      const div=document.createElement('div'); div.style.height='260px'; container.appendChild(div);
-      const g={nodes:[{id:'A',label:'A'},{id:'B',label:'B'}],edges:[{id:'e1',source:'A',target:'B'}]};
-      new sigma.Sigma(new sigma.Graph(g),div);
-    }
-
-    card.appendChild(container);
+  // VALUE card
+  if(r.type === "value"){
+    const big=document.createElement("div");
+    big.style.fontSize="32px";
+    big.textContent="(value)";
+    container.appendChild(big);
   }
+
+  // TABLE card placeholder
+  if(r.type === "table"){
+    const tbl=document.createElement("div");
+    tbl.textContent="(table placeholder)";
+    container.appendChild(tbl);
+  }
+
+  // BAR / LINE chart
+  if(r.type === "bar" || r.type === "line"){
+    const canvas=document.createElement("canvas");
+    container.appendChild(canvas);
+
+    new Chart(canvas,{
+      type:r.type,
+      data:{ labels:["A","B","C"], datasets:[{ label:r.title, data:[3,7,5] }] },
+      options:{ responsive:true }
+    });
+  }
+
+  // GRAPH card
+  if(r.type === "graph"){
+    const div=document.createElement("div");
+    div.style.height="260px";
+    container.appendChild(div);
+
+    const graph = new graphology.Graph();
+    graph.addNode("A", {x:0, y:0, size:8, label:"A"});
+    graph.addNode("B", {x:1, y:1, size:8, label:"B"});
+    graph.addEdge("A", "B");
+
+    new sigma.Sigma(graph, div);
+  }
+
+  card.appendChild(container);
   return card;
 }
 
-// Dark mode
-const dm=document.getElementById('darkMode');
-dm.onclick=()=>document.body.classList.toggle('dark');
+// Dark mode toggle
+const dm=document.getElementById("darkMode");
+dm.onclick=()=>document.body.classList.toggle("dark");
 
 loadDashboard();
 </script>
