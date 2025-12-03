@@ -138,12 +138,12 @@ function createCard(r){
     div.style.height="260px";
     container.appendChild(div);
 
-   const graph = new Graphology.Graph();
-graph.addNode("A", {x:0, y:0, size:8, label:"A"});
-graph.addNode("B", {x:1, y:1, size:8, label:"B"});
-graph.addEdge("A", "B");
+    const graph = new Graph();
+    graph.addNode("A", {x:0, y:0, size:8, label:"A"});
+    graph.addNode("B", {x:1, y:1, size:8, label:"B"});
+    graph.addEdge("A", "B");
 
-new sigma.Sigma(graph, div);
+    new sigma.Sigma(graph, div)(graph, div);
   }
 
   card.appendChild(container);
