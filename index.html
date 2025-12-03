@@ -133,18 +133,20 @@ function createCard(r){
   }
 
   // GRAPH card
-  if(r.type === "graph"){
-    const div=document.createElement("div");
-    div.style.height="260px";
-    container.appendChild(div);
+if (r.type === "graph") {
+  const div = document.createElement("div");
+  div.style.height = "260px";
+  container.appendChild(div);
 
-    const graph = new Graph();
-    graph.addNode("A", {x:0, y:0, size:8, label:"A"});
-    graph.addNode("B", {x:1, y:1, size:8, label:"B"});
-    graph.addEdge("A", "B");
+  // Sigma 3 includes its own Graph class!
+  const graph = new sigma.classes.graph.Graph();
 
-    new sigma.Sigma(graph, div)(graph, div);
-  }
+  graph.addNode("A", { x: 0, y: 0, size: 8, label: "A" });
+  graph.addNode("B", { x: 1, y: 1, size: 8, label: "B" });
+  graph.addEdge("A", "B");
+
+  new sigma.Sigma(graph, div);
+}
 
   card.appendChild(container);
   return card;
