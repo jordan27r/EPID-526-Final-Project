@@ -9,7 +9,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <!-- Graphology + Sigma browser builds -->
-  <script src="https://cdn.jsdelivr.net/npm/graphology/dist/graphology.min.js"></script>
+ <script src="graphology.min.js"></script>
   <script src="sigma.min.js"></script></script>
 
   <style>
@@ -132,26 +132,25 @@ function createCard(r){
     });
   }
 
-  // GRAPH card
-  if(r.type === "graph"){
-    const div=document.createElement("div");
-    div.style.height="260px";
-    container.appendChild(div);
+// GRAPH card
+if (r.type === "graph") {
+  const div = document.createElement("div");
+  div.style.height = "260px";
+  container.appendChild(div);
 
-    // Use classic Sigma v1 graph model
-    const graph = {
-      nodes: [
-        { id: "A", label: "A", x: 0, y: 0, size: 8, color: "#666" },
-        { id: "B", label: "B", x: 1, y: 1, size: 8, color: "#666" }
-      ],
-      edges: [
-        { id: "AB", source: "A", target: "B", size: 1 }
-      ]
-    };
+  // Create a Graphology graph
+  const graph = new graphology.Graph();
 
-    // Classic Sigma renderer
-    const renderer = new Sigma(graph, div)(graph, div)(graph, div)(graph, div)(graph, div);
-  }
+  // Add sample nodes
+  graph.addNode("A", { x: 0, y: 0, size: 8, label: "A", x: 0, y: 0 });
+  graph.addNode("B", { x: 1, y: 1, size: 8, label: "B" });
+
+  // Add sample edge
+  graph.addEdge("A", "B");
+
+  // Render
+  const renderer = new Sigma(graph, div);
+}
 
   card.appendChild(container);
   return card;
