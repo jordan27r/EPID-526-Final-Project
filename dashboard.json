@@ -18,15 +18,15 @@
         {
           "id": "401e4720-fb65-4e45-b8ce-b54e0cef467e",
           "title": "Gun Violence Social Network",
-          "query": "OPTIONAL MATCH (n1:gunViolenceData), (n2:gunViolenceData) \nWHERE n1.to = n2.from AND n1.from <> n2.from\nMERGE (n1)-[r:edges]-(n2)\nRETURN n1, n2,r",
+          "query": "OPTIONAL MATCH (n1:gunViolenceData2), (n2:gunViolenceData2) \nWHERE n1.to = n2.from\nMERGE (n1)-[r:incEdge]-(n2)\nRETURN n1, n2,r",
           "width": 14,
           "height": 4,
           "x": 0,
           "y": 2,
           "type": "graph",
           "selection": {
-            "gunViolenceData": "(no label)",
-            "edges": "(label)"
+            "gunViolenceData2": "(no label)",
+            "incEdge": "(label)"
           },
           "settings": {
             "type": "Node Property",
@@ -43,30 +43,29 @@
             "defaultNodeSize": 30,
             "nodeLabelFontSize": 12,
             "nodeColorProp": "shot",
-            "nodeSizeProp": "numIncidents",
             "nodeColorScheme": "set1"
           },
           "schema": [
             [
-              "gunViolenceData",
+              "gunViolenceData2",
               "numIncidents",
               "arrested",
+              "X",
               "from",
               "to",
               "ward",
-              "shot",
-              "arrestDate"
+              "shot"
             ],
             [
-              "edges"
+              "incEdge"
             ]
           ]
         },
         {
           "id": "fc05489f-c7d6-46c0-8529-0457d6e081e1",
           "title": "Total Arrests by Ward",
-          "query": "MATCH (n:gunViolenceData)\nRETURN n.ward AS Ward, count(n) AS `Number People`\nORDER BY Ward ASC\n\n\n",
-          "width": 10,
+          "query": "MATCH (n:gunViolenceData2)\nWHERE n.arrested = TRUE AND n.ward IS NOT NULL\nRETURN n.ward AS Ward, count(n) AS `Number People`\nORDER BY Ward ASC\n\n\n",
+          "width": 12,
           "height": 4,
           "x": 0,
           "y": 6,
@@ -82,10 +81,10 @@
         {
           "id": "86dad6c6-5fd0-4fc5-aec3-55a96f12978a",
           "title": "Numbers by Month",
-          "query": "/* Plot Number arrests by month */\n\nMATCH (g:gunIncidentData)\nWHERE g.DATE_REPT.month IS NOT NULL\nWITH g.DATE_REPT.month AS month, count(g) AS totalArrests, count(CASE WHEN g.shot = true THEN 1 END) AS totalShot\nRETURN month, totalShot, totalArrests\nORDER BY month\n\n\n\n",
-          "width": 10,
+          "query": "/* Plot Number arrests by month */\n\nMATCH (g:gunIncidentData2)\nWHERE g.DATE_REPT.month IS NOT NULL\nWITH g.DATE_REPT.month AS month, count(g) AS totalArrests, count(CASE WHEN g.shot = true THEN 1 END) AS totalShot\nRETURN month, totalShot, totalArrests\nORDER BY month\n\n\n\n",
+          "width": 12,
           "height": 4,
-          "x": 11,
+          "x": 12,
           "y": 6,
           "type": "line",
           "selection": {
@@ -95,14 +94,16 @@
               "totalArrests"
             ]
           },
-          "settings": {},
+          "settings": {
+            "legend": true
+          },
           "schema": []
         },
         {
           "id": "8906eaab-e6ae-4ead-8ea0-0b59e3bbb372",
-          "title": "Avg. Number Incidents Before Arrest",
-          "query": "MATCH (g:gunViolenceData)\nWHERE g.arrestDate IS NOT NULL\nRETURN avg(g.numIncidents) AS avgIncidentsBeforeArrest\n\n\n",
-          "width": 9,
+          "title": "Avg. Number Incidents Before Being Shot",
+          "query": "MATCH (g:gunViolenceData2)\nWHERE g.shot = TRUE\nRETURN avg(g.numIncidents) AS avgIncidentsBeforeArrest\n\n\n",
+          "width": 10,
           "height": 2,
           "x": 0,
           "y": 10,
@@ -114,8 +115,8 @@
         {
           "id": "2cf6030a-7808-4a93-9021-0bc0281a53a3",
           "title": "Most Common Charge",
-          "query": "MATCH (g:gunIncidentData)\nWHERE g.ArrestChargeDescription <> 'NA'\nRETURN g.ArrestChargeDescription, count(*) AS count\nORDER BY count DESC\nLIMIT 1\n\n\n\n",
-          "width": 9,
+          "query": "MATCH (g:gunIncidentData2)\nWHERE g.CrimeType <> 'NA'\nRETURN g.CrimeType, count(*) AS count\nORDER BY count DESC\nLIMIT 1\n\n\n\n",
+          "width": 10,
           "height": 2,
           "x": 0,
           "y": 12,
@@ -130,10 +131,10 @@
         {
           "id": "4fed48ff-2cb8-4413-8eb5-8180061871d1",
           "title": "% Reoffense Rate",
-          "query": "MATCH (g:gunViolenceData)\nWITH count(CASE WHEN g.numIncidents >1 THEN 1 END) as reoffend, count(*) as total\nRETURN  100.0 * reoffend / total AS proportion\n\n\n\n",
+          "query": "MATCH (g:gunViolenceData2)\nWITH count(CASE WHEN g.numIncidents >1 THEN 1 END) as reoffend, count(*) as total\nRETURN  100.0 * reoffend / total AS proportion\n\n\n\n",
           "width": 6,
           "height": 2,
-          "x": 9,
+          "x": 10,
           "y": 10,
           "type": "value",
           "selection": {},
@@ -142,11 +143,11 @@
         },
         {
           "id": "44f86b04-46db-4f6c-90e1-513f585a4347",
-          "title": "Avg. Time B/W Incidents",
-          "query": "MATCH (inc:gunIncidentData)\nWITH inc.MasterID AS MasterID,\n     date(inc.DATE_REPT) AS d\nWHERE d IS NOT NULL\nWITH MasterID, collect(d) AS dates\nWITH MasterID, apoc.coll.sort(dates) AS dates\nUNWIND range(0, size(dates) - 2) AS idx\nWITH MasterID,\n     duration.between(dates[idx], dates[idx + 1]).days AS timeDiff\nRETURN avg(timeDiff) AS averageTimeDifference\nORDER BY averageTimeDifference DESC;\n",
+          "title": "Avg. Days B/W Incidents",
+          "query": "MATCH (inc:gunIncidentData2)\nWITH inc.MasterID AS MasterID,\n     date(inc.DATE_REPT) AS d\nWHERE d IS NOT NULL\nWITH MasterID, collect(d) AS dates\nWITH MasterID, apoc.coll.sort(dates) AS dates\nUNWIND range(0, size(dates) - 2) AS idx\nWITH MasterID,\n     duration.between(dates[idx], dates[idx + 1]).days AS timeDiff\nRETURN avg(timeDiff) AS averageTimeDifference\nORDER BY averageTimeDifference DESC;\n",
           "width": 8,
           "height": 2,
-          "x": 15,
+          "x": 16,
           "y": 10,
           "type": "value",
           "selection": {},
@@ -156,10 +157,10 @@
         {
           "id": "b08ea41c-9838-4df6-9d98-fad654afc5ef",
           "title": "Avg. Number Connections",
-          "query": "MATCH (n:gunViolenceData)\nCALL {\n    WITH n\n    MATCH (n)--()\n    RETURN count(*) AS degree\n}\nRETURN avg(degree) AS averageNetworkSize;\n\n\n",
+          "query": "MATCH (n:gunViolenceData2)\nCALL {\n    WITH n\n    MATCH (n)--()\n    RETURN count(*) AS degree\n}\nRETURN avg(degree) AS averageNetworkSize;\n\n\n",
           "width": 7,
           "height": 2,
-          "x": 9,
+          "x": 10,
           "y": 12,
           "type": "value",
           "selection": {},
@@ -169,7 +170,7 @@
         {
           "id": "4b5c4f9c-7dae-4da9-946c-35b6a95c0bc4",
           "title": "Network Statistics",
-          "query": "MATCH (g:gunViolenceData)\nRETURN g.arrested, g.from, g.numIncidents, g.shot, g.to, g.ward, g.arrestDate",
+          "query": "/* table of gunViolenceData statistics */\n\nMATCH (g:networkStats)\nRETURN g.Metric as Metric, g.Value as Value",
           "width": 10,
           "height": 4,
           "x": 14,
@@ -182,7 +183,7 @@
           "id": "1bc15fd3-9b72-4696-afa2-cb23b4a11322",
           "title": "Interventions Recommended",
           "query": "\nhttps://jordan27r.github.io/EPID-526-HW-3/\n\n",
-          "width": 23,
+          "width": 24,
           "height": 2,
           "x": 0,
           "y": 0,
@@ -194,14 +195,15 @@
         {
           "id": "6f3df489-ff60-4bbb-b706-c12bd642dff9",
           "title": "Number Multi-Person Offenses",
-          "query": "\n      \n\n\n",
-          "width": 6,
+          "query": "\nMATCH (t:gunIncidentData2)\nWITH t.INCI_ID AS incident, collect(DISTINCT t.MasterID) AS masterIDs\nWHERE size(masterIDs) > 1\nRETURN count(incident) AS countGreaterThanOne;",
+          "width": 7,
           "height": 2,
-          "x": 16,
+          "x": 17,
           "y": 12,
-          "type": "table",
+          "type": "value",
           "selection": {},
-          "settings": {}
+          "settings": {},
+          "schema": []
         }
       ]
     },
